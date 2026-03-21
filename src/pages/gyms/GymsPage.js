@@ -56,17 +56,27 @@ export function GymsPage() {
   const { isAdmin } = useAuth();
   const [gyms, setGyms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [editGym, setEditGym] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
 
   const fetchGyms = async () => {
     setLoading(true);
-    try { const { data } = await gymAPI.getAll(); setGyms(Array.isArray(data) ? data : []); } catch { toast.error('Failed to load gyms'); }
+    try {
+      const { data } = await gymAPI.getAll({ page });
+      console.log('Gyms API Response:', data);
+      setGyms(data?.content || []);
+      setTotalPages(data?.totalPages || 1);
+    } catch (error) {
+      console.error('Fetch gyms error:', error);
+      toast.error('Failed to load gyms');
+    }
     setLoading(false);
   };
 
-  useEffect(() => { fetchGyms(); }, []);
+  useEffect(() => { fetchGyms(); }, [page]);
 
   const handleDelete = async (id) => {
     try { await gymAPI.delete(id); toast.success('Gym deleted'); setDeleteId(null); fetchGyms(); } catch { toast.error('Delete failed'); }
@@ -85,38 +95,126 @@ export function GymsPage() {
         </div>
       </div>
 
-      <div className="grid-3 animate-fadeInUp">
-        {loading ? Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="card" style={{ padding: '28px' }}>
-            <div className="skeleton" style={{ height: 20, width: '60%', marginBottom: 16 }} />
-            <div className="skeleton" style={{ height: 14, width: '100%', marginBottom: 8 }} />
-            <div className="skeleton" style={{ height: 14, width: '80%' }} />
-          </div>
-        )) : gyms.map((g, i) => (
-          <div key={g.id} className="card card-interactive animate-fadeInUp" style={{ animationDelay: `${i * 80}ms`, padding: '28px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-              <div style={{ width: 48, height: 48, borderRadius: '14px', background: 'var(--accent-primary-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)' }}>
-                <Building2 size={22} />
-              </div>
-              <span className={`badge ${g.isActive ? 'badge-success' : 'badge-warning'}`}>
-                <span className="badge-dot" />{g.isActive ? 'Active' : 'Inactive'}
+      <div className="card animate-fadeInUp delay-100" style={{ padding: 0 }}>
+        <div className="table-wrapper">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Gym Name</th>
+                <th>Code</th>
+                <th>City</th>
+                <th>State</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                Array.from({ length: 10 }, (_, i) => (
+                  <tr key={i}>{Array.from({ length: 8 }, (_, j) => <td key={j}><div className="skeleton" style={{ height: 14 }} /></td>)}</tr>
+                ))
+              ) : gyms.length === 0 ? (
+                <tr><td colSpan={8}>
+                  <div className="empty-state">
+                    <div className="empty-state-icon"><Building2 size={24} /></div>
+                    <h4 style={{ color: 'var(--text-primary)' }}>No gyms found</h4>
+                    <p style={{ fontSize: '13px' }}>Add your first gym location</p>
+                    {isAdmin && <button className="btn btn-primary btn-sm" onClick={() => { setEditGym(null); setShowModal(true); }}><Plus size={14} /> Add Gym</button>}
+                  </div>
+                </td></tr>
+              ) : (
+                gyms.map(g => (
+                  <tr key={g.id}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'var(--accent-primary-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)' }}>
+                          <Building2 size={16} />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{g.name}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td><span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--accent-primary-light)', background: 'var(--accent-primary-dim)', padding: '2px 8px', borderRadius: '4px' }}>{g.gymCode}</span></td>
+                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{g.city || '-'}</td>
+                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{g.state || '-'}</td>
+                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{g.phone || '-'}</td>
+                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{g.email || '-'}</td>
+                    <td><span className={`badge ${g.isActive ? 'badge-success' : 'badge-warning'}`}><span className="badge-dot" />{g.isActive ? 'Active' : 'Inactive'}</span></td>
+                    <td style={{ textAlign: 'right' }}>
+                      {isAdmin && (
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => { setEditGym(g); setShowModal(true); }} title="Edit"><Edit2 size={14} /></button>
+                          <button className="btn btn-ghost btn-icon btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setDeleteId(g.id)} title="Delete"><Trash2 size={14} /></button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '16px 20px',
+            borderTop: '1px solid var(--border-subtle)',
+            background: 'var(--bg-secondary)'
+          }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
+              Showing page <strong style={{ color: 'var(--text-primary)' }}>{page + 1}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{totalPages}</strong> • <strong style={{ color: 'var(--accent-primary)' }}>10</strong> gyms per page
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                disabled={page === 0} 
+                onClick={() => setPage(0)}
+                style={{ opacity: page === 0 ? 0.5 : 1 }}
+              >
+                First
+              </button>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                disabled={page === 0} 
+                onClick={() => setPage(p => p - 1)}
+                style={{ opacity: page === 0 ? 0.5 : 1 }}
+              >
+                Previous
+              </button>
+              <span style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                fontSize: '13px', 
+                color: 'var(--text-secondary)',
+                padding: '0 12px'
+              }}>
+                Page {page + 1} of {totalPages}
               </span>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                disabled={page >= totalPages - 1} 
+                onClick={() => setPage(p => p + 1)}
+                style={{ opacity: page >= totalPages - 1 ? 0.5 : 1 }}
+              >
+                Next
+              </button>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                disabled={page >= totalPages - 1} 
+                onClick={() => setPage(totalPages - 1)}
+                style={{ opacity: page >= totalPages - 1 ? 0.5 : 1 }}
+              >
+                Last
+              </button>
             </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 800, marginBottom: '4px' }}>{g.name}</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--accent-primary-light)', background: 'var(--accent-primary-dim)', display: 'inline-block', padding: '2px 8px', borderRadius: '4px', marginBottom: '16px' }}>{g.gymCode}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-              {g.city && <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}><MapPin size={13} color="var(--text-tertiary)" />{g.city}, {g.state}</div>}
-              {g.phone && <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}><Phone size={13} color="var(--text-tertiary)" />{g.phone}</div>}
-              {g.email && <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}><Mail size={13} color="var(--text-tertiary)" />{g.email}</div>}
-            </div>
-            {isAdmin && (
-              <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
-                <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => { setEditGym(g); setShowModal(true); }}><Edit2 size={13} /> Edit</button>
-                <button className="btn btn-ghost btn-icon btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setDeleteId(g.id)}><Trash2 size={14} /></button>
-              </div>
-            )}
           </div>
-        ))}
+        )}
       </div>
 
       {showModal && <GymModal gym={editGym} onClose={() => { setShowModal(false); setEditGym(null); }} onSave={() => { setShowModal(false); setEditGym(null); fetchGyms(); }} />}

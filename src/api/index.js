@@ -73,7 +73,7 @@ export const memberAPI = {
 
 // ===== TRAINER API =====
 export const trainerAPI = {
-  getAll: () => api.get('/gym/trainers'),
+  getAll: (params) => api.get('/gym/trainers', { params }),
   getActive: () => api.get('/gym/trainers/active'),
   getById: (id) => api.get(`/gym/trainers/${id}`),
   getBySpecialization: (spec) => api.get(`/gym/trainers/specialization/${spec}`),
@@ -124,7 +124,7 @@ export const attendanceAPI = {
 
 // ===== GYM API =====
 export const gymAPI = {
-  getAll: () => api.get('/gym/gyms/all'),
+  getAll: (params) => api.get('/gym/gyms/all', { params }),
   getActive: () => api.get('/gym/gyms/active'),
   getById: (id) => api.get(`/gym/gyms/${id}`),
   create: (data) => api.post('/gym/gyms/create', data),

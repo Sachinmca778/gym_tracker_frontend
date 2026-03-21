@@ -143,6 +143,8 @@ export default function MembershipsPage() {
   const { isAdmin, isStaff } = useAuth();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [editPlan, setEditPlan] = useState(null);
@@ -150,11 +152,19 @@ export default function MembershipsPage() {
 
   const fetchPlans = async () => {
     setLoading(true);
-    try { const { data } = await membershipPlanAPI.getAll(); setPlans(Array.isArray(data) ? data : []); } catch { toast.error('Failed to load plans'); }
+    try {
+      const { data } = await membershipPlanAPI.getAll({ page });
+      console.log('Membership Plans API Response:', data);
+      setPlans(data?.content || []);
+      setTotalPages(data?.totalPages || 1);
+    } catch (error) {
+      console.error('Fetch plans error:', error);
+      toast.error('Failed to load plans');
+    }
     setLoading(false);
   };
 
-  useEffect(() => { fetchPlans(); }, []);
+  useEffect(() => { fetchPlans(); }, [page]);
 
   const handleDelete = async (id) => {
     try { await membershipPlanAPI.delete(id); toast.success('Plan deleted'); setDeleteId(null); fetchPlans(); } catch { toast.error('Delete failed'); }
@@ -178,64 +188,126 @@ export default function MembershipsPage() {
 
       <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', color: 'var(--text-secondary)' }}>Membership Plans</h2>
 
-      <div className="grid-3 animate-fadeInUp">
-        {loading ? Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="card" style={{ padding: '28px' }}>
-            <div className="skeleton" style={{ height: 20, width: '60%', marginBottom: 16 }} />
-            <div className="skeleton" style={{ height: 40, width: '80%', marginBottom: 12 }} />
-            <div className="skeleton" style={{ height: 14, width: '100%', marginBottom: 8 }} />
-            <div className="skeleton" style={{ height: 14, width: '70%' }} />
-          </div>
-        )) : plans.length === 0 ? (
-          <div style={{ gridColumn: '1/-1' }}>
-            <div className="empty-state">
-              <div className="empty-state-icon"><CreditCard size={24} /></div>
-              <h4 style={{ color: 'var(--text-primary)' }}>No plans yet</h4>
-              <p>Create membership plans for your gym</p>
-              {isAdmin && <button className="btn btn-primary btn-sm" onClick={() => setShowPlanModal(true)}><Plus size={14} /> Create Plan</button>}
+      <div className="card animate-fadeInUp delay-100" style={{ padding: 0 }}>
+        <div className="table-wrapper">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Plan Name</th>
+                <th>Duration</th>
+                <th>Price</th>
+                <th>Description</th>
+                <th>Features</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                Array.from({ length: 10 }, (_, i) => (
+                  <tr key={i}>{Array.from({ length: 7 }, (_, j) => <td key={j}><div className="skeleton" style={{ height: 14 }} /></td>)}</tr>
+                ))
+              ) : plans.length === 0 ? (
+                <tr><td colSpan={7}>
+                  <div className="empty-state">
+                    <div className="empty-state-icon"><CreditCard size={24} /></div>
+                    <h4 style={{ color: 'var(--text-primary)' }}>No plans yet</h4>
+                    <p style={{ fontSize: '13px' }}>Create membership plans for your gym</p>
+                    {isAdmin && <button className="btn btn-primary btn-sm" onClick={() => { setEditPlan(null); setShowPlanModal(true); }}><Plus size={14} /> Create Plan</button>}
+                  </div>
+                </td></tr>
+              ) : (
+                plans.map((p, i) => (
+                  <tr key={p.id}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'var(--accent-primary-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)' }}>
+                          <CreditCard size={16} />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td><span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--accent-primary-light)', background: 'var(--accent-primary-dim)', padding: '2px 8px', borderRadius: '4px' }}>{p.durationMonths} month{p.durationMonths > 1 ? 's' : ''}</span></td>
+                    <td><span style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 700, color: 'var(--success)' }}>₹{(p.price || 0).toLocaleString()}</span></td>
+                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.description || '-'}</td>
+                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {p.features ? p.features.split(',').slice(0, 2).join(', ') + (p.features.split(',').length > 2 ? '...' : '') : '-'}
+                    </td>
+                    <td><span className={`badge ${p.isActive ? 'badge-success' : 'badge-warning'}`}><span className="badge-dot" />{p.isActive ? 'Active' : 'Inactive'}</span></td>
+                    <td style={{ textAlign: 'right' }}>
+                      {isAdmin && (
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => { setEditPlan(p); setShowPlanModal(true); }} title="Edit"><Edit2 size={14} /></button>
+                          <button className="btn btn-ghost btn-icon btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setDeleteId(p.id)} title="Delete"><Trash2 size={14} /></button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '16px 20px',
+            borderTop: '1px solid var(--border-subtle)',
+            background: 'var(--bg-secondary)'
+          }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
+              Showing page <strong style={{ color: 'var(--text-primary)' }}>{page + 1}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{totalPages}</strong> • <strong style={{ color: 'var(--accent-primary)' }}>10</strong> plans per page
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                disabled={page === 0} 
+                onClick={() => setPage(0)}
+                style={{ opacity: page === 0 ? 0.5 : 1 }}
+              >
+                First
+              </button>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                disabled={page === 0} 
+                onClick={() => setPage(p => p - 1)}
+                style={{ opacity: page === 0 ? 0.5 : 1 }}
+              >
+                Previous
+              </button>
+              <span style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                fontSize: '13px', 
+                color: 'var(--text-secondary)',
+                padding: '0 12px'
+              }}>
+                Page {page + 1} of {totalPages}
+              </span>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                disabled={page >= totalPages - 1} 
+                onClick={() => setPage(p => p + 1)}
+                style={{ opacity: page >= totalPages - 1 ? 0.5 : 1 }}
+              >
+                Next
+              </button>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                disabled={page >= totalPages - 1} 
+                onClick={() => setPage(totalPages - 1)}
+                style={{ opacity: page >= totalPages - 1 ? 0.5 : 1 }}
+              >
+                Last
+              </button>
             </div>
           </div>
-        ) : plans.map((p, i) => {
-          const color = TIER_COLORS[p.durationMonths] || '#6366f1';
-          return (
-            <div key={p.id} className="card animate-fadeInUp" style={{ animationDelay: `${i * 80}ms`, padding: '28px', position: 'relative', overflow: 'hidden' }}>
-              {/* Top accent */}
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: color }} />
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-                <div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>{p.name}</div>
-                  <span className={`badge ${p.isActive ? 'badge-success' : 'badge-warning'}`}>
-                    <span className="badge-dot" />{p.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 800, color }}>₹{p.price}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>/ {p.durationMonths} month{p.durationMonths > 1 ? 's' : ''}</div>
-                </div>
-              </div>
-
-              {p.description && <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>{p.description}</p>}
-
-              {p.features && (
-                <div style={{ marginBottom: '20px' }}>
-                  {p.features.split(',').map(f => (
-                    <div key={f.trim()} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                      <Check size={13} color={color} /> {f.trim()}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {isAdmin && (
-                <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
-                  <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => { setEditPlan(p); setShowPlanModal(true); }}><Edit2 size={13} /> Edit</button>
-                  <button className="btn btn-ghost btn-icon btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setDeleteId(p.id)}><Trash2 size={14} /></button>
-                </div>
-              )}
-            </div>
-          );
-        })}
+        )}
       </div>
 
       {showPlanModal && <PlanModal plan={editPlan} onClose={() => { setShowPlanModal(false); setEditPlan(null); }} onSave={() => { setShowPlanModal(false); setEditPlan(null); fetchPlans(); }} />}
