@@ -120,6 +120,17 @@ export const attendanceAPI = {
   checkOut: (gymId, userId) => api.post(`/api/gyms/${gymId}/attendance/check-out/${userId}`),
   getCurrent: (gymId, userId) => api.get(`/api/gyms/${gymId}/attendance/current/${userId}`),
   getToday: (gymId, userId) => api.get(`/api/gyms/${gymId}/attendance/today/${userId}`),
+  getTodayList: (gymId, page, size) => api.get(`/api/gyms/${gymId}/attendance/today/list`, { 
+    params: { page, size } 
+  }),
+  getCurrentlyPresent: (gymId) => api.get(`/api/gyms/${gymId}/attendance/currently-present`),
+  getStatistics: (gymId, date) => api.get(`/api/gyms/${gymId}/attendance/statistics`, { 
+    params: { date: date || undefined } 
+  }),
+  getWeekly: (gymId) => api.get(`/api/gyms/${gymId}/attendance/weekly`),
+  getByDateRange: (gymId, startDate, endDate, page, size) => api.get(`/api/gyms/${gymId}/attendance/date-range`, {
+    params: { startDate, endDate, page, size }
+  }),
 };
 
 // ===== GYM API =====
