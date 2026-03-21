@@ -143,6 +143,62 @@ export const gymAPI = {
   delete: (id) => api.delete(`/gym/gyms/${id}`),
 };
 
+// ===== STORE API =====
+export const storeAPI = {
+  // Categories
+  getCategories: (gymId) => api.get(`/gym/store/categories?gymId=${gymId}`),
+  createCategory: (data) => api.post('/gym/store/categories', data),
+  
+  // Products
+  getProducts: (gymId, categoryId, page, size) => api.get('/gym/store/products', {
+    params: { gymId, categoryId, page, size }
+  }),
+  getProduct: (id) => api.get(`/gym/store/products/${id}`),
+  createProduct: (data) => api.post('/gym/store/products', data),
+  updateProduct: (id, data) => api.put(`/gym/store/products/${id}`, data),
+  deleteProduct: (id) => api.delete(`/gym/store/products/${id}`),
+  searchProducts: (gymId, searchTerm, page, size) => api.get('/gym/store/products/search', {
+    params: { gymId, searchTerm, page, size }
+  }),
+  getLowStockProducts: (gymId) => api.get(`/gym/store/alerts/low-stock?gymId=${gymId}`),
+  
+  // Cart
+  getCart: (userId) => api.get(`/gym/store/cart?userId=${userId}`),
+  addToCart: (userId, productId, quantity) => api.post('/gym/store/cart/add', null, {
+    params: { userId, productId, quantity }
+  }),
+  updateCartItem: (userId, productId, quantity) => api.put('/gym/store/cart/update', null, {
+    params: { userId, productId, quantity }
+  }),
+  removeFromCart: (userId, productId) => api.delete('/gym/store/cart/remove', {
+    params: { userId, productId }
+  }),
+  clearCart: (userId) => api.post('/gym/store/cart/clear', null, {
+    params: { userId }
+  }),
+  checkout: (userId, checkoutData) => api.post('/gym/store/cart/checkout', checkoutData, {
+    params: { userId }
+  }),
+  
+  // Orders
+  getOrders: (gymId, page, size) => api.get('/gym/store/orders', {
+    params: { gymId, page, size }
+  }),
+  getOrder: (id) => api.get(`/gym/store/orders/${id}`),
+  createOrder: (data) => api.post('/gym/store/orders', data),
+  updateOrderStatus: (id, status) => api.put(`/gym/store/orders/${id}/status`, null, {
+    params: { status }
+  }),
+  getMyOrders: (userId, page, size) => api.get('/gym/store/orders/my-orders', {
+    params: { userId, page, size }
+  }),
+  
+  // Statistics
+  getStatistics: (gymId, startDate, endDate) => api.get('/gym/store/statistics', {
+    params: { gymId, startDate, endDate }
+  }),
+};
+
 // ===== USER API =====
 export const userAPI = {
   search: (searchTerm) => api.get('/gym/users/search', { params: { searchTerm } }),

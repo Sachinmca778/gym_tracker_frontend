@@ -6,11 +6,12 @@ import {
   LayoutDashboard, Users, UserCheck, CreditCard,
   Calendar, Dumbbell, Building2, BarChart3, LogOut,
   Menu, X, Bell, Search, ChevronRight, Activity,
-  Settings, User, Shield
+  Settings, User, Shield,ShoppingCart
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['SUPER_USER','ADMIN','MANAGER','RECEPTIONIST','TRAINER','MEMBER'] },
+  { path: '/store', label: 'Store', icon: ShoppingCart, roles: ['SUPER_USER','ADMIN','MANAGER','RECEPTIONIST','TRAINER','MEMBER'] },
   { path: '/members', label: 'Members', icon: Users, roles: ['SUPER_USER','ADMIN','MANAGER','RECEPTIONIST','TRAINER'] },
   { path: '/trainers', label: 'Trainers', icon: Dumbbell, roles: ['SUPER_USER','ADMIN','MANAGER','RECEPTIONIST'] },
   { path: '/memberships', label: 'Memberships', icon: CreditCard, roles: ['SUPER_USER','ADMIN','MANAGER','RECEPTIONIST'] },
