@@ -64,9 +64,13 @@ export function AuthProvider({ children }) {
     const token = localStorage.getItem('accessToken');
     try {
       if (token) await authAPI.logout(token);
-    } catch { /* silent */ }
-    localStorage.clear();
-    setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Continue with logout even if API call fails
+    } finally {
+      localStorage.clear();
+      setUser(null);
+    }
   }, []);
 
   const clearError = useCallback(() => setError(null), []);

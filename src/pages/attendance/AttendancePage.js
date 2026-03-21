@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { attendanceAPI, userAPI } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+import { useDebounce } from 'use-debounce';
 import { Clock, LogIn, LogOut, Search, Calendar, Timer, CheckCircle, XCircle } from 'lucide-react';
 
 export default function AttendancePage() {
@@ -9,6 +11,7 @@ export default function AttendancePage() {
   const [userId, setUserId] = useState(user?.id || '');
   const [gymId, setGymId] = useState(user?.gymId || '');
   const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebounce(search, 300); // 300ms debounce
   const [users, setUsers] = useState([]);
   const [current, setCurrent] = useState(null);
   const [today, setToday] = useState([]);
@@ -21,13 +24,21 @@ export default function AttendancePage() {
     }
   }, [userId, gymId]);
 
-  const searchUsers = async (q) => {
-    if (!q.trim()) return;
+  const searchUsers = async () => {
+    if (!debouncedSearch.trim()) return;
     try {
-      const { data } = await userAPI.search(q);
+      const { data } = await userAPI.search(debouncedSearch);
       setUsers(Array.isArray(data) ? data : []);
-    } catch { /* silent */ }
+    } catch (error) {
+      console.error('User search failed:', error);
+    }
   };
+
+  useEffect(() => {
+    if (debouncedSearch) {
+      searchUsers();
+    }
+  }, [debouncedSearch]);
 
   const fetchAttendance = async () => {
     if (!userId || !gymId) return;
@@ -38,7 +49,10 @@ export default function AttendancePage() {
       ]);
       if (curRes.status === 'fulfilled') setCurrent(curRes.value.data);
       if (todayRes.status === 'fulfilled') setToday(Array.isArray(todayRes.value.data) ? todayRes.value.data : []);
-    } catch { /* silent */ }
+    } catch (error) {
+      console.error('Attendance fetch error:', error);
+      toast.error('Failed to load attendance data');
+    }
   };
 
   const handleCheckIn = async () => {
