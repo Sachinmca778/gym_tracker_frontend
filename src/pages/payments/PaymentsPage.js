@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { paymentAPI, userAPI, membershipPlanAPI } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+import { useDebounce } from 'use-debounce';
 import {
   CreditCard, Plus, Search, RefreshCw, Check, X,
   AlertCircle, TrendingUp, Clock, AlertTriangle, DollarSign
@@ -27,18 +29,31 @@ function PaymentModal({ onClose, onSave }) {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(false);
   const [userSearch, setUserSearch] = useState('');
+  const [debouncedSearch] = useDebounce(userSearch, 300); // 300ms debounce
 
   useEffect(() => {
-    membershipPlanAPI.getActive().then(r => setPlans(r.data || [])).catch(() => {});
+    membershipPlanAPI.getActive()
+      .then(r => setPlans(r.data || []))
+      .catch(error => {
+        console.error('Failed to fetch plans:', error);
+      });
   }, []);
 
-  const searchUsers = async (q) => {
-    if (!q.trim()) return;
+  const searchUsers = async () => {
+    if (!debouncedSearch.trim()) return;
     try {
-      const { data } = await userAPI.search(q);
+      const { data } = await userAPI.search(debouncedSearch);
       setUsers(Array.isArray(data) ? data : []);
-    } catch { /* silent */ }
+    } catch (error) {
+      console.error('User search failed:', error);
+    }
   };
+
+  useEffect(() => {
+    if (debouncedSearch) {
+      searchUsers();
+    }
+  }, [debouncedSearch]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -164,7 +179,10 @@ export default function PaymentsPage() {
         pending: pendRes.status === 'fulfilled' ? pendRes.value.data : 0,
         daily: dailyRes.status === 'fulfilled' ? dailyRes.value.data : 0,
       });
-    } catch { /* silent */ }
+    } catch (error) {
+      console.error('Summary fetch error:', error);
+      toast.error('Failed to load payment summary');
+    }
   };
 
   const FILTERS = [

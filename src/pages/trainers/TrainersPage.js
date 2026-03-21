@@ -73,6 +73,8 @@ export function TrainersPage() {
   const { isStaff } = useAuth();
   const [trainers, setTrainers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [editTrainer, setEditTrainer] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
@@ -81,13 +83,18 @@ export function TrainersPage() {
   const fetch = async () => {
     setLoading(true);
     try {
-      const { data } = await trainerAPI.getAll();
-      setTrainers(Array.isArray(data) ? data : data?.trainers || []);
-    } catch { toast.error('Failed to load trainers'); }
+      const { data } = await trainerAPI.getAll({ page });
+      console.log('Trainers API Response:', data);
+      setTrainers(data?.content || []);
+      setTotalPages(data?.totalPages || 1);
+    } catch (error) {
+      console.error('Fetch trainers error:', error);
+      toast.error('Failed to load trainers');
+    }
     setLoading(false);
   };
 
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { fetch(); }, [page]);
 
   const handleDelete = async (id) => {
     try { await trainerAPI.delete(id); toast.success('Trainer removed'); setDeleteId(null); fetch(); } catch { toast.error('Delete failed'); }
@@ -113,58 +120,131 @@ export function TrainersPage() {
         <button className={`tab-btn ${filter === 'ACTIVE' ? 'active' : ''}`} onClick={() => setFilter('ACTIVE')}>Active</button>
       </div>
 
-      <div className="grid-3 animate-fadeInUp">
-        {loading ? Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className="card" style={{ animationDelay: `${i * 80}ms` }}>
-            <div style={{ display: 'flex', gap: '14px', marginBottom: '16px' }}>
-              <div className="skeleton" style={{ width: 56, height: 56, borderRadius: '50%', flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <div className="skeleton" style={{ height: 16, width: '70%', marginBottom: 8 }} />
-                <div className="skeleton" style={{ height: 12, width: '50%' }} />
-              </div>
-            </div>
-          </div>
-        )) : filtered.map((t, i) => (
-          <div key={t.id} className="card card-interactive animate-fadeInUp" style={{ animationDelay: `${i * 60}ms` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <div className="avatar avatar-lg">{`${t.firstName?.[0] || ''}${t.lastName?.[0] || ''}`.toUpperCase()}</div>
-                <div>
-                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '15px' }}>{t.firstName} {t.lastName}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--accent-primary-light)', fontWeight: 600 }}>{t.specialization || 'General'}</div>
-                </div>
-              </div>
-              <span className={`badge ${t.isActive ? 'badge-success' : 'badge-warning'}`} style={{ height: 'fit-content' }}>
-                <span className="badge-dot" />{t.isActive ? 'Active' : 'Inactive'}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
-              {t.rating > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
-                  <Star size={13} color="#f59e0b" fill="#f59e0b" />
-                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t.rating?.toFixed(1)}</span>
-                  <span style={{ color: 'var(--text-tertiary)' }}>({t.totalRatings})</span>
-                </div>
+      <div className="card animate-fadeInUp delay-100" style={{ padding: 0 }}>
+        <div className="table-wrapper">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Trainer</th>
+                <th>Specialization</th>
+                <th>Experience</th>
+                <th>Rate/Hr</th>
+                <th>Rating</th>
+                <th>Contact</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                Array.from({ length: 10 }, (_, i) => (
+                  <tr key={i}>{Array.from({ length: 8 }, (_, j) => <td key={j}><div className="skeleton" style={{ height: 14 }} /></td>)}</tr>
+                ))
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={8}>
+                  <div className="empty-state">
+                    <div className="empty-state-icon"><Dumbbell size={24} /></div>
+                    <h4 style={{ color: 'var(--text-primary)' }}>No trainers found</h4>
+                    <p style={{ fontSize: '13px' }}>Add trainers to your gym</p>
+                    {isStaff && <button className="btn btn-primary btn-sm" onClick={() => { setEditTrainer(null); setShowModal(true); }}><Plus size={14} /> Add Trainer</button>}
+                  </div>
+                </td></tr>
+              ) : (
+                filtered.map((t, i) => (
+                  <tr key={t.id}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div className="avatar avatar-sm">{`${t.firstName?.[0] || ''}${t.lastName?.[0] || ''}`.toUpperCase()}</div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t.firstName} {t.lastName}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td><span style={{ fontSize: '13px', color: 'var(--accent-primary-light)', fontWeight: 600 }}>{t.specialization || 'General'}</span></td>
+                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{t.experienceYears ? `${t.experienceYears} yrs` : '-'}</td>
+                    <td><span style={{ fontSize: '13px', color: 'var(--success)', fontWeight: 600 }}>₹{t.hourlyRate || 0}/hr</span></td>
+                    <td>
+                      {t.rating > 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
+                          <Star size={12} color="#f59e0b" fill="#f59e0b" />
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t.rating.toFixed(1)}</span>
+                        </div>
+                      ) : '-'}
+                    </td>
+                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{t.email || '-'}</td>
+                    <td><span className={`badge ${t.isActive ? 'badge-success' : 'badge-warning'}`}><span className="badge-dot" />{t.isActive ? 'Active' : 'Inactive'}</span></td>
+                    <td style={{ textAlign: 'right' }}>
+                      {isStaff && (
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => { setEditTrainer(t); setShowModal(true); }} title="Edit"><Edit2 size={14} /></button>
+                          <button className="btn btn-ghost btn-icon btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setDeleteId(t.id)} title="Delete"><Trash2 size={14} /></button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))
               )}
-              {t.experienceYears && <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{t.experienceYears} yrs exp</div>}
-              {t.hourlyRate && <div style={{ fontSize: '13px', color: 'var(--success)', fontWeight: 600 }}>₹{t.hourlyRate}/hr</div>}
+            </tbody>
+          </table>
+        </div>
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '16px 20px',
+            borderTop: '1px solid var(--border-subtle)',
+            background: 'var(--bg-secondary)'
+          }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
+              Showing page <strong style={{ color: 'var(--text-primary)' }}>{page + 1}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{totalPages}</strong> • <strong style={{ color: 'var(--accent-primary)' }}>10</strong> trainers per page
             </div>
-
-            {t.bio && <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.bio}</p>}
-
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-              {t.email && <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '4px' }}><Mail size={11} />{t.email}</div>}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                disabled={page === 0} 
+                onClick={() => setPage(0)}
+                style={{ opacity: page === 0 ? 0.5 : 1 }}
+              >
+                First
+              </button>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                disabled={page === 0} 
+                onClick={() => setPage(p => p - 1)}
+                style={{ opacity: page === 0 ? 0.5 : 1 }}
+              >
+                Previous
+              </button>
+              <span style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                fontSize: '13px', 
+                color: 'var(--text-secondary)',
+                padding: '0 12px'
+              }}>
+                Page {page + 1} of {totalPages}
+              </span>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                disabled={page >= totalPages - 1} 
+                onClick={() => setPage(p => p + 1)}
+                style={{ opacity: page >= totalPages - 1 ? 0.5 : 1 }}
+              >
+                Next
+              </button>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                disabled={page >= totalPages - 1} 
+                onClick={() => setPage(totalPages - 1)}
+                style={{ opacity: page >= totalPages - 1 ? 0.5 : 1 }}
+              >
+                Last
+              </button>
             </div>
-
-            {isStaff && (
-              <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
-                <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => { setEditTrainer(t); setShowModal(true); }}><Edit2 size={13} /> Edit</button>
-                <button className="btn btn-ghost btn-icon btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setDeleteId(t.id)}><Trash2 size={14} /></button>
-              </div>
-            )}
           </div>
-        ))}
+        )}
       </div>
 
       {showModal && <TrainerModal trainer={editTrainer} onClose={() => { setShowModal(false); setEditTrainer(null); }} onSave={() => { setShowModal(false); setEditTrainer(null); fetch(); }} />}

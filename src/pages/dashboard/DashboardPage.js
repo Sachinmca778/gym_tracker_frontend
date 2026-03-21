@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { memberAPI, paymentAPI, trainerAPI, membershipAPI } from '../../api';
+import { useDebounce } from 'use-debounce';
 import {
   Users, Dumbbell, CreditCard, TrendingUp, TrendingDown,
   Calendar, ArrowRight, AlertTriangle, Activity, Clock,
@@ -110,8 +112,12 @@ export default function DashboardPage() {
       ]);
       if (summaryRes.status === 'fulfilled') setSummary(summaryRes.value.data);
       if (expiringRes.status === 'fulfilled') setExpiring(expiringRes.value.data || []);
-    } catch { /* silent */ }
-    setLoading(false);
+    } catch (error) {
+      console.error('Dashboard fetch error:', error);
+      toast.error(error.response?.data?.message || 'Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const stats = [
@@ -327,3 +333,33 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+// ===== PROP TYPES =====
+Counter.propTypes = {
+  value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  prefix: PropTypes.string,
+  suffix: PropTypes.string,
+};
+
+StatCard.propTypes = {
+  icon: PropTypes.elementType.isRequired,
+  label: PropTypes.string.isRequired,
+  value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  prefix: PropTypes.string,
+  suffix: PropTypes.string,
+  change: PropTypes.number,
+  changeLabel: PropTypes.string,
+  color: PropTypes.string,
+  delay: PropTypes.number,
+  loading: PropTypes.bool,
+};
+
+CustomTooltip.propTypes = {
+  active: PropTypes.bool,
+  payload: PropTypes.array,
+  label: PropTypes.string,
+};
+
+DashboardPage.propTypes = {
+  // No props - top level page component
+};

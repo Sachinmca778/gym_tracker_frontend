@@ -73,7 +73,7 @@ export const memberAPI = {
 
 // ===== TRAINER API =====
 export const trainerAPI = {
-  getAll: () => api.get('/gym/trainers'),
+  getAll: (params) => api.get('/gym/trainers', { params }),
   getActive: () => api.get('/gym/trainers/active'),
   getById: (id) => api.get(`/gym/trainers/${id}`),
   getBySpecialization: (spec) => api.get(`/gym/trainers/specialization/${spec}`),
@@ -120,11 +120,22 @@ export const attendanceAPI = {
   checkOut: (gymId, userId) => api.post(`/api/gyms/${gymId}/attendance/check-out/${userId}`),
   getCurrent: (gymId, userId) => api.get(`/api/gyms/${gymId}/attendance/current/${userId}`),
   getToday: (gymId, userId) => api.get(`/api/gyms/${gymId}/attendance/today/${userId}`),
+  getTodayList: (gymId, page, size) => api.get(`/api/gyms/${gymId}/attendance/today/list`, { 
+    params: { page, size } 
+  }),
+  getCurrentlyPresent: (gymId) => api.get(`/api/gyms/${gymId}/attendance/currently-present`),
+  getStatistics: (gymId, date) => api.get(`/api/gyms/${gymId}/attendance/statistics`, { 
+    params: { date: date || undefined } 
+  }),
+  getWeekly: (gymId) => api.get(`/api/gyms/${gymId}/attendance/weekly`),
+  getByDateRange: (gymId, startDate, endDate, page, size) => api.get(`/api/gyms/${gymId}/attendance/date-range`, {
+    params: { startDate, endDate, page, size }
+  }),
 };
 
 // ===== GYM API =====
 export const gymAPI = {
-  getAll: () => api.get('/gym/gyms/all'),
+  getAll: (params) => api.get('/gym/gyms/all', { params }),
   getActive: () => api.get('/gym/gyms/active'),
   getById: (id) => api.get(`/gym/gyms/${id}`),
   create: (data) => api.post('/gym/gyms/create', data),

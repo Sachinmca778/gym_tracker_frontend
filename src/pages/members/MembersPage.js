@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { memberAPI } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+import { useDebounce } from 'use-debounce';
 import {
   Users, Search, Plus, Edit2, Trash2, Eye,
   Filter, MoreVertical, Phone, Mail, Calendar,
@@ -32,11 +34,38 @@ function MemberFormModal({ member, onClose, onSave }) {
 
   const validate = () => {
     const e = {};
-    if (!form.firstName.trim()) e.firstName = 'Required';
-    if (!form.lastName.trim()) e.lastName = 'Required';
-    if (!form.phone.trim()) e.phone = 'Required';
-    if (!form.emergencyContactName.trim()) e.emergencyContactName = 'Required';
-    if (!form.emergencyContactPhone.trim()) e.emergencyContactPhone = 'Required';
+    
+    // Required fields
+    if (!form.firstName?.trim()) e.firstName = 'First name is required';
+    if (!form.lastName?.trim()) e.lastName = 'Last name is required';
+    if (!form.phone?.trim()) e.phone = 'Phone number is required';
+    if (!form.emergencyContactName?.trim()) e.emergencyContactName = 'Emergency contact name is required';
+    if (!form.emergencyContactPhone?.trim()) e.emergencyContactPhone = 'Emergency contact phone is required';
+    
+    // Email format validation
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      e.email = 'Invalid email format';
+    }
+    
+    // Phone format validation (10 digits)
+    if (form.phone && !/^\d{10}$/.test(form.phone.replace(/[-\s]/g, ''))) {
+      e.phone = 'Phone must be 10 digits';
+    }
+    
+    // Pincode validation (6 digits for India)
+    if (form.pincode && !/^\d{6}$/.test(form.pincode)) {
+      e.pincode = 'Pincode must be 6 digits';
+    }
+    
+    // Date of birth validation (should not be in future)
+    if (form.dateOfBirth) {
+      const dob = new Date(form.dateOfBirth);
+      const today = new Date();
+      if (dob > today) {
+        e.dateOfBirth = 'Date of birth cannot be in the future';
+      }
+    }
+    
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -146,6 +175,7 @@ export default function MembersPage() {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebounce(search, 300); // 300ms debounce
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
   const [editMember, setEditMember] = useState(null);
@@ -157,8 +187,12 @@ export default function MembersPage() {
     try {
       const { data } = await memberAPI.getAll();
       setMembers(Array.isArray(data) ? data : data?.content || data?.members || []);
-    } catch { toast.error('Failed to load members'); }
-    setLoading(false);
+    } catch (error) {
+      console.error('Failed to fetch members:', error);
+      toast.error(error.response?.data?.message || 'Failed to load members');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetchMembers(); }, []);
@@ -166,15 +200,18 @@ export default function MembersPage() {
   const handleDelete = async (id) => {
     try {
       await memberAPI.delete(id);
-      toast.success('Member deleted');
+      toast.success('Member deleted successfully');
       setDeleteId(null);
       fetchMembers();
-    } catch { toast.error('Delete failed'); }
+    } catch (error) {
+      console.error('Delete failed:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete member');
+    }
   };
 
   const filtered = members.filter(m => {
-    const q = search.toLowerCase();
-    const matchSearch = !search || `${m.firstName} ${m.lastName} ${m.email} ${m.phone} ${m.memberCode}`.toLowerCase().includes(q);
+    const q = debouncedSearch.toLowerCase();
+    const matchSearch = !debouncedSearch || `${m.firstName} ${m.lastName} ${m.email} ${m.phone} ${m.memberCode}`.toLowerCase().includes(q);
     const matchStatus = statusFilter === 'ALL' || m.status === statusFilter;
     return matchSearch && matchStatus;
   });
@@ -325,3 +362,33 @@ export default function MembersPage() {
     </div>
   );
 }
+
+// ===== PROP TYPES =====
+MemberFormModal.propTypes = {
+  member: PropTypes.shape({
+    id: PropTypes.number,
+    firstName: PropTypes.string,
+    lastName: PropTypes.string,
+    email: PropTypes.string,
+    phone: PropTypes.string,
+    gender: PropTypes.string,
+    dateOfBirth: PropTypes.string,
+    address: PropTypes.string,
+    city: PropTypes.string,
+    state: PropTypes.string,
+    pincode: PropTypes.string,
+    emergencyContactName: PropTypes.string,
+    emergencyContactPhone: PropTypes.string,
+    emergencyContactRelation: PropTypes.string,
+    fitnessGoals: PropTypes.string,
+    medicalConditions: PropTypes.string,
+    status: PropTypes.string,
+    gymId: PropTypes.number,
+  }),
+  onClose: PropTypes.func.isRequired,
+  onSave: PropTypes.func.isRequired,
+};
+
+MembersPage.propTypes = {
+  // No props - top level page component
+};
