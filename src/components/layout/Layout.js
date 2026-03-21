@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import logo from '../../assets/logo.jpeg';
 import {
   LayoutDashboard, Users, UserCheck, CreditCard,
   Calendar, Dumbbell, Building2, BarChart3, LogOut,
@@ -102,23 +103,16 @@ export default function Layout({ children }) {
           borderBottom: '1px solid var(--border-subtle)',
           minHeight: '72px',
         }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '12px',
-            background: 'var(--grad-brand)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+          <img src={logo} alt="Gym Tracker Logo" style={{
+            width: '42px',
+            height: '42px',
+            objectFit: 'contain',
             flexShrink: 0,
-            boxShadow: 'var(--shadow-glow-sm)',
-          }}>
-            <Dumbbell size={20} color="white" strokeWidth={2.5} />
-          </div>
+          }} />
           {sidebarOpen && (
             <div style={{ overflow: 'hidden' }} className="animate-fadeIn">
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '16px', color: 'var(--text-primary)', whiteSpace: 'nowrap', letterSpacing: '-0.02em' }}>
-                GYM CRM
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '16px', color: 'var(--text-primary)', whiteSpace: 'nowrap', letterSpacing: '-0.02em' }}>
+                Gym Tracker
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 500 }}>Management Suite</div>
             </div>
