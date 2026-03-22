@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
-import { memberAPI } from '../../api';
+import { memberAPI, userAPI } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 import { useDebounce } from 'use-debounce';
@@ -20,8 +20,9 @@ const STATUS_MAP = {
 
 // ===== MEMBER FORM MODAL =====
 function MemberFormModal({ member, onClose, onSave }) {
-  const { user } = useAuth();
+  const { user, isAdmin, isStaff } = useAuth();
   const [form, setForm] = useState(member || {
+    userId: '',
     firstName: '', lastName: '', email: '', phone: '',
     gender: 'MALE', dateOfBirth: '', address: '', city: '',
     state: '', pincode: '', emergencyContactName: '',
@@ -29,11 +30,70 @@ function MemberFormModal({ member, onClose, onSave }) {
     fitnessGoals: '', medicalConditions: '', status: 'ACTIVE',
     gymId: user?.gymId,
   });
+  
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [users, setUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch] = useDebounce(searchTerm, 300);
+
+  // Fetch users for dropdown (only if creating new member, not editing)
+  useEffect(() => {
+    if (!member && isAdmin) {
+      fetchUsers();
+    }
+  }, []);
+
+  // Search users when search term changes
+  useEffect(() => {
+    if (debouncedSearch && !member) {
+      searchUsers(debouncedSearch);
+    }
+  }, [debouncedSearch, member]);
+
+  const fetchUsers = async () => {
+    try {
+      const { data } = await userAPI.search('');
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
+  const searchUsers = async (term) => {
+    try {
+      const { data } = await userAPI.search(term);
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('User search failed:', error);
+    }
+  };
+
+  // Handle user selection
+  const handleUserSelect = (userId) => {
+    const user = users.find(u => u.id === parseInt(userId));
+    if (user) {
+      setSelectedUser(user);
+      setForm(prev => ({
+        ...prev,
+        userId: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        gender: user.gender || 'MALE',
+      }));
+    }
+  };
 
   const validate = () => {
     const e = {};
+    
+    // User ID is REQUIRED for new members
+    if (!member && !form.userId) {
+      e.userId = 'User selection is required';
+    }
     
     // Required fields
     if (!form.firstName?.trim()) e.firstName = 'First name is required';
@@ -112,47 +172,145 @@ function MemberFormModal({ member, onClose, onSave }) {
         </div>
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-              {field('First Name', 'firstName', 'text', true)}
-              {field('Last Name', 'lastName', 'text', true)}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-              {field('Email', 'email', 'email')}
-              {field('Phone', 'phone', 'tel', true)}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-              <div className="input-group" style={{ marginBottom: 0 }}>
-                <label className="input-label">Gender</label>
-                <select className="input" value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })}>
-                  <option value="MALE">Male</option>
-                  <option value="FEMALE">Female</option>
-                  <option value="OTHER">Other</option>
-                </select>
+            {/* User Selection (Only for new members, not editing) */}
+            {!member ? (
+              <div style={{ marginBottom: '16px', padding: '16px', background: 'var(--bg-elevated)', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                  <UserCheck size={16} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                  Select User (Required)
+                </h4>
+                
+                {/* Search Box */}
+                <div className="search-input-wrapper" style={{ marginBottom: '12px' }}>
+                  <Search size={16} className="search-icon" />
+                  <input
+                    className="input"
+                    style={{ paddingLeft: '36px' }}
+                    placeholder="Search users by name or email..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                  />
+                </div>
+
+                {/* User Dropdown */}
+                <div className="input-group" style={{ marginBottom: 0 }}>
+                  <label className="input-label">Select User *</label>
+                  <select
+                    className={`input ${errors.userId ? 'error' : ''}`}
+                    value={form.userId || ''}
+                    onChange={e => handleUserSelect(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Select a User --</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.firstName} {u.lastName} - {u.username} ({u.email})
+                      </option>
+                    ))}
+                  </select>
+                  {errors.userId && (
+                    <span className="input-error-msg">
+                      <AlertCircle size={12} /> User selection is required
+                    </span>
+                  )}
+                </div>
+
+                {/* Info Message */}
+                {form.userId && (
+                  <div style={{ 
+                    marginTop: '12px', 
+                    padding: '10px', 
+                    background: 'var(--success-dim)', 
+                    borderRadius: '8px',
+                    border: '1px solid rgba(16,185,129,0.2)',
+                    fontSize: '13px',
+                    color: 'var(--text-secondary)'
+                  }}>
+                    <Check size={14} style={{ marginRight: '6px', verticalAlign: 'text-bottom', color: 'var(--success)' }} />
+                    User selected: <strong>{selectedUser?.firstName} {selectedUser?.lastName}</strong>
+                  </div>
+                )}
               </div>
-              {field('Date of Birth', 'dateOfBirth', 'date')}
-            </div>
-            <div style={{ marginBottom: '16px' }}>{field('Address', 'address')}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-              {field('City', 'city')}
-              {field('State', 'state')}
-              {field('Pincode', 'pincode')}
-            </div>
-            <div style={{ padding: '16px', background: 'var(--bg-elevated)', borderRadius: '10px', border: '1px solid var(--border-subtle)', marginBottom: '16px' }}>
-              <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Emergency Contact</h4>
+            ) : null}
+
+            {/* Auto-populated User Info (Read-only) */}
+            {form.userId && (
+              <div style={{ 
+                marginBottom: '16px', 
+                padding: '16px', 
+                background: 'var(--info-dim)', 
+                borderRadius: '10px',
+                border: '1px solid rgba(59,130,246,0.2)'
+              }}>
+                <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                  User Information (Auto-populated)
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label className="input-label" style={{ fontSize: '12px' }}>First Name</label>
+                    <input className="input" value={form.firstName} readOnly style={{ background: 'rgba(255,255,255,0.5)' }} />
+                  </div>
+                  <div>
+                    <label className="input-label" style={{ fontSize: '12px' }}>Last Name</label>
+                    <input className="input" value={form.lastName} readOnly style={{ background: 'rgba(255,255,255,0.5)' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '12px' }}>
+                  <div>
+                    <label className="input-label" style={{ fontSize: '12px' }}>Email</label>
+                    <input className="input" value={form.email} readOnly style={{ background: 'rgba(255,255,255,0.5)' }} />
+                  </div>
+                  <div>
+                    <label className="input-label" style={{ fontSize: '12px' }}>Phone</label>
+                    <input className="input" value={form.phone} readOnly style={{ background: 'rgba(255,255,255,0.5)' }} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Additional Member Details */}
+            <div style={{ opacity: form.userId || member ? 1 : 0.5, pointerEvents: form.userId || member ? 'auto' : 'none' }}>
+              {!form.userId && !member && (
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-tertiary)' }}>
+                  <AlertCircle size={24} style={{ marginBottom: '8px' }} />
+                  <p>Please select a user first to add member details</p>
+                </div>
+              )}
+              
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                {field('Contact Name', 'emergencyContactName', 'text', true)}
-                {field('Contact Phone', 'emergencyContactPhone', 'tel', true)}
+                {field('Date of Birth', 'dateOfBirth', 'date')}
+                <div className="input-group" style={{ marginBottom: 0 }}>
+                  <label className="input-label">Gender</label>
+                  <select className="input" value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })}>
+                    <option value="MALE">Male</option>
+                    <option value="FEMALE">Female</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
               </div>
-              {field('Relation', 'emergencyContactRelation')}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div className="input-group" style={{ marginBottom: 0 }}>
-                <label className="input-label">Fitness Goals</label>
-                <textarea className="input" style={{ minHeight: '80px' }} value={form.fitnessGoals || ''} onChange={e => setForm({ ...form, fitnessGoals: e.target.value })} placeholder="Weight loss, muscle gain..." />
+              <div style={{ marginBottom: '16px' }}>{field('Address', 'address')}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                {field('City', 'city')}
+                {field('State', 'state')}
+                {field('Pincode', 'pincode')}
               </div>
-              <div className="input-group" style={{ marginBottom: 0 }}>
-                <label className="input-label">Medical Conditions</label>
-                <textarea className="input" style={{ minHeight: '80px' }} value={form.medicalConditions || ''} onChange={e => setForm({ ...form, medicalConditions: e.target.value })} placeholder="Any medical conditions..." />
+              <div style={{ padding: '16px', background: 'var(--bg-elevated)', borderRadius: '10px', border: '1px solid var(--border-subtle)', marginBottom: '16px' }}>
+                <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Emergency Contact</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                  {field('Contact Name', 'emergencyContactName', 'text', true)}
+                  {field('Contact Phone', 'emergencyContactPhone', 'tel', true)}
+                </div>
+                {field('Relation', 'emergencyContactRelation')}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="input-group" style={{ marginBottom: 0 }}>
+                  <label className="input-label">Fitness Goals</label>
+                  <textarea className="input" style={{ minHeight: '80px' }} value={form.fitnessGoals || ''} onChange={e => setForm({ ...form, fitnessGoals: e.target.value })} placeholder="Weight loss, muscle gain..." />
+                </div>
+                <div className="input-group" style={{ marginBottom: 0 }}>
+                  <label className="input-label">Medical Conditions</label>
+                  <textarea className="input" style={{ minHeight: '80px' }} value={form.medicalConditions || ''} onChange={e => setForm({ ...form, medicalConditions: e.target.value })} placeholder="Any medical conditions..." />
+                </div>
               </div>
             </div>
           </div>

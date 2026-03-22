@@ -11,7 +11,7 @@ import {
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 export default function AttendancePage() {
-  const { user, isAdmin, isStaff } = useAuth();
+  const { user, isAdmin, isStaff, isSuperUser } = useAuth();
   const [userId, setUserId] = useState(user?.id || '');
   const [gymId, setGymId] = useState(user?.gymId || 1);
   const [search, setSearch] = useState('');
@@ -21,7 +21,10 @@ export default function AttendancePage() {
   const [todayHistory, setTodayHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [method, setMethod] = useState('MANUAL');
-  
+
+  // Check if current user can mark attendance (SUPER_USER cannot)
+  const canMarkAttendance = !isSuperUser;
+
   // Statistics
   const [stats, setStats] = useState(null);
   const [weeklyData, setWeeklyData] = useState([]);
@@ -244,7 +247,7 @@ export default function AttendancePage() {
 
       {/* Main Content - Two Columns */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
-        
+
         {/* Left Column - Check-in/out Panel */}
         <div className="card animate-fadeInUp" style={{ padding: '28px' }}>
           <h3 style={{ fontSize: '18px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -253,6 +256,33 @@ export default function AttendancePage() {
             </div>
             Mark Attendance
           </h3>
+
+          {/* SUPER_USER Restriction Message */}
+          {!canMarkAttendance && (
+            <div style={{
+              padding: '16px',
+              background: 'var(--warning-dim)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              borderRadius: '10px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <AlertCircle size={20} color="var(--warning)" />
+              <div>
+                <div style={{ fontWeight: 600, color: 'var(--warning)', marginBottom: '4px' }}>
+                  Super Users Cannot Mark Attendance
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  Super Users have view-only access to attendance. They cannot check in or check out.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {canMarkAttendance && (
+            <>
 
           {/* User Select */}
           <div className="input-group">
@@ -339,10 +369,10 @@ export default function AttendancePage() {
 
           {/* Action Buttons */}
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button 
-              className="btn btn-primary" 
-              style={{ flex: 1 }} 
-              onClick={handleCheckIn} 
+            <button
+              className="btn btn-primary"
+              style={{ flex: 1 }}
+              onClick={handleCheckIn}
               disabled={loading || !!current}
             >
               {loading ? (
@@ -351,15 +381,17 @@ export default function AttendancePage() {
                 <><LogIn size={16} /> Check In</>
               )}
             </button>
-            <button 
-              className="btn btn-secondary" 
-              style={{ flex: 1 }} 
-              onClick={handleCheckOut} 
+            <button
+              className="btn btn-secondary"
+              style={{ flex: 1 }}
+              onClick={handleCheckOut}
               disabled={loading || !current}
             >
               <LogOut size={16} /> Check Out
             </button>
           </div>
+            </>
+          )}
         </div>
 
         {/* Right Column - Currently Present */}
