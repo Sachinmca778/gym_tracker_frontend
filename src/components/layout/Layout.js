@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, UserCheck, CreditCard,
   Calendar, Dumbbell, Building2, BarChart3, LogOut,
   Menu, X, Bell, Search, ChevronRight, Activity,
-  Settings, User, Shield
+  Settings, User, Shield,UserCog
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { path: '/payments', label: 'Payments', icon: BarChart3, roles: ['SUPER_USER','ADMIN','MANAGER','RECEPTIONIST'] },
   { path: '/gyms', label: 'Gyms', icon: Building2, roles: ['SUPER_USER','ADMIN'] },
   { path: '/profile', label: 'Profile', icon: User, roles: ['SUPER_USER','ADMIN','MANAGER','RECEPTIONIST','TRAINER','MEMBER'] },
+  { path: '/users', label: 'User', icon: UserCog, roles: ['SUPER_USER','ADMIN'] },
 ];
 
 const ROLE_COLORS = {

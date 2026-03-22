@@ -13,6 +13,7 @@ import AttendancePage from './pages/attendance/AttendancePage';
 import MembershipsPage from './pages/memberships/MembershipsPage';
 import GymsPage from './pages/gyms/GymsPage';
 import ProfilePage from './pages/profile/ProfilePage';
+import UsersPage from './pages/users/UsersPage';
 import './styles/globals.css';
 
 function ProtectedRoute({ children }) {
@@ -49,6 +50,7 @@ function AppRoutes() {
       <Route path="/attendance" element={<ProtectedRoute><Layout><AttendancePage /></Layout></ProtectedRoute>} />
       <Route path="/memberships" element={<ProtectedRoute><Layout><MembershipsPage /></Layout></ProtectedRoute>} />
       <Route path="/gyms" element={<ProtectedRoute><Layout><GymsPage /></Layout></ProtectedRoute>} />
+      <Route path="/users" element={<ProtectedRoute><Layout><UsersPage /></Layout></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Layout><ProfilePage /></Layout></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

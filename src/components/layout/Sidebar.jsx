@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, UserCheck, CreditCard,
   Calendar, Dumbbell, Building2, User, LogOut,
-  TrendingUp, Award, ChevronRight,
+  TrendingUp, Award, ChevronRight, UserCog,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -19,6 +19,7 @@ const NAV_SECTIONS = [
     label: 'Management',
     items: [
       { to: '/members',     icon: Users,       label: 'Members',      roles: ['SUPER_USER','ADMIN','MANAGER','RECEPTIONIST'] },
+      { to: '/users',       icon: UserCog,     label: 'Users',        roles: ['SUPER_USER','ADMIN'] },
       { to: '/trainers',    icon: Award,       label: 'Trainers',     roles: ['SUPER_USER','ADMIN','MANAGER'] },
       { to: '/memberships', icon: CreditCard,  label: 'Memberships',  roles: ['SUPER_USER','ADMIN','MANAGER','RECEPTIONIST'] },
     ],

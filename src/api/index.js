@@ -147,6 +147,10 @@ export const gymAPI = {
 export const userAPI = {
   search: (searchTerm) => api.get('/gym/users/search', { params: { searchTerm } }),
   getAll: () => api.get('/gym/users/all'),
+  getById: (id) => api.get(`/gym/users/${id}`),
+  create: (data) => api.post('/gym/auth/register', data),
+  update: (id, data) => api.put(`/gym/users/${id}`, data),
+  delete: (id) => api.delete(`/gym/users/${id}`),
 };
 
 export default api;
