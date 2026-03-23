@@ -82,6 +82,7 @@ export function AuthProvider({ children }) {
   const isAdmin = hasRole(ROLES.SUPER_USER, ROLES.ADMIN);
   const isManager = hasRole(ROLES.SUPER_USER, ROLES.ADMIN, ROLES.MANAGER);
   const isStaff = hasRole(ROLES.SUPER_USER, ROLES.ADMIN, ROLES.MANAGER, ROLES.RECEPTIONIST);
+  const isMember = hasRole(ROLES.MEMBER);
 
   return (
     <AuthContext.Provider value={{
@@ -96,6 +97,7 @@ export function AuthProvider({ children }) {
       isAdmin,
       isManager,
       isStaff,
+      isMember,
     }}>
       {children}
     </AuthContext.Provider>

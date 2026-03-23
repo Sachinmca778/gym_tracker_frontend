@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../../context/AuthContext';
 import logo from '../../assets/logo.jpeg';
 import {
@@ -213,6 +214,7 @@ export default function Layout({ children }) {
         }}>
           <div style={{ flex: 1 }} />
 
+          <ThemeToggle />
           {/* Notification Bell */}
           <button className="btn btn-ghost btn-icon" style={{ position: 'relative' }}>
             <Bell size={18} />

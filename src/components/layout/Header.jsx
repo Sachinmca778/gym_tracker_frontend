@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, Moon, Sun, Menu } from 'lucide-react';
+import { Search, Bell, Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import ThemeToggle from './ThemeToggle';
 
 export default function Header({ title, subtitle, actions }) {
   const { user } = useAuth();
@@ -32,6 +33,8 @@ export default function Header({ title, subtitle, actions }) {
             placeholder="Search members..."
           />
         </form>
+
+        <ThemeToggle />
 
         {/* Notifications */}
         <div className="icon-btn relative" style={{ position: 'relative' }}>

@@ -11,7 +11,7 @@ import {
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 export default function AttendancePage() {
-  const { user, isAdmin, isStaff, isSuperUser } = useAuth();
+  const { user, isAdmin, isStaff, isSuperUser, isMember } = useAuth();
   const [userId, setUserId] = useState(user?.id || '');
   const [gymId, setGymId] = useState(user?.gymId || 1);
   const [search, setSearch] = useState('');
@@ -22,8 +22,14 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(false);
   const [method, setMethod] = useState('MANUAL');
 
-  // Check if current user can mark attendance (SUPER_USER cannot)
-  const canMarkAttendance = !isSuperUser;
+  // Check if current user can mark attendance (SUPER_USER cannot, MEMBER can only view own)
+  const canMarkAttendance = !isSuperUser && !isMember;
+  const isOwnAttendance = isMember || (user && userId === user.id);
+  // Member's attendance history
+  const [memberAttendanceHistory, setMemberAttendanceHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historyTotalPages, setHistoryTotalPages] = useState(0);
 
   // Statistics
   const [stats, setStats] = useState(null);
@@ -42,6 +48,37 @@ export default function AttendancePage() {
       fetchTodayList();
     }
   }, [gymId, page]);
+  
+  // Fetch member's own attendance history if logged in as member
+  useEffect(() => {
+    if (isMember && user?.id) {
+      fetchMemberAttendanceHistory();
+    }
+  }, [isMember, user?.id, historyPage]);
+
+  const fetchMemberAttendanceHistory = async () => {
+    if (!user?.id) return;
+    setHistoryLoading(true);
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 30);
+      
+      const { data } = await attendanceAPI.getByDateRange(
+        user.gymId,
+        startDate.toISOString().split('T')[0],
+        endDate.toISOString().split('T')[0],
+        historyPage,
+        20
+      );
+      
+      setMemberAttendanceHistory(data.content || []);
+      setHistoryTotalPages(data.totalPages || 1);
+    } catch (error) {
+      console.error('Member attendance history fetch error:', error);
+    }
+    setHistoryLoading(false);
+  };
 
   // Fetch attendance when user selected
   useEffect(() => {
@@ -562,6 +599,98 @@ export default function AttendancePage() {
           )}
         </div>
       </div>
+
+      {/* MEMBER'S ATTENDANCE HISTORY - Last 30 Days */}
+      {isMember && memberAttendanceHistory.length > 0 && (
+        <div className="card animate-fadeInUp delay-400" style={{ padding: '24px', marginTop: '24px' }}>
+          <h3 style={{ fontSize: '18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'var(--success-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--success)' }}>
+              <Calendar size={18} />
+            </div>
+            My Attendance History (Last 30 Days)
+          </h3>
+
+          {historyLoading ? (
+            <div style={{ padding: '40px', textAlign: 'center' }}>
+              <div className="spinner" style={{ width: 32, height: 32, borderColor: 'rgba(16,185,129,0.3)', borderTopColor: 'var(--success)', margin: '0 auto' }} />
+              <p style={{ color: 'var(--text-tertiary)', marginTop: '12px' }}>Loading your attendance...</p>
+            </div>
+          ) : (
+            <div className="table-wrapper">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Check-In</th>
+                    <th>Check-Out</th>
+                    <th>Duration</th>
+                    <th>Method</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {memberAttendanceHistory.map(a => (
+                    <tr key={a.id}>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>
+                          {new Date(a.checkIn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                          {new Date(a.checkIn).toLocaleDateString('en-IN', { weekday: 'short' })}
+                        </div>
+                      </td>
+                      <td style={{ fontSize: '13px' }}>{formatTime(a.checkIn)}</td>
+                      <td style={{ fontSize: '13px' }}>{formatTime(a.checkOut)}</td>
+                      <td style={{ fontSize: '13px', fontWeight: 600, color: 'var(--success)' }}>
+                        {formatDuration(a.durationMinutes)}
+                      </td>
+                      <td>
+                        <span className="badge badge-info" style={{ fontSize: '11px' }}>
+                          {a.method || 'MANUAL'}
+                        </span>
+                      </td>
+                      <td>
+                        {a.checkOut ? (
+                          <span className="badge badge-success">
+                            <CheckCircle size={10} /> Completed
+                          </span>
+                        ) : (
+                          <span className="badge badge-warning">
+                            <Clock size={10} /> Active
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {/* Pagination */}
+              {historyTotalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '16px' }}>
+                  <button 
+                    className="btn btn-secondary btn-sm" 
+                    disabled={historyPage === 0} 
+                    onClick={() => setHistoryPage(p => p - 1)}
+                  >
+                    Previous
+                  </button>
+                  <span style={{ display: 'flex', alignItems: 'center', fontSize: '13px' }}>
+                    Page {historyPage + 1} of {historyTotalPages}
+                  </span>
+                  <button 
+                    className="btn btn-secondary btn-sm" 
+                    disabled={historyPage >= historyTotalPages - 1} 
+                    onClick={() => setHistoryPage(p => p + 1)}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
